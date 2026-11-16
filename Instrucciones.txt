@@ -1,0 +1,51 @@
+# Kernel Didáctico Expropiativo para STM32F103 (ARM Cortex-M3)
+
+Sistema operativo mínimo en tiempo real desarrollado desde cero en C y ensamblador ARM (sin dependencias de FreeRTOS u otros RTOS) para la placa **STM32F103C8T6 (Blue Pill)**.
+
+## Arquitectura de Módulos
+* `kernel/`: Gestión de TCB (Bloque de Control de Proceso), estados (`NEW`, `READY`, `RUNNING`, `BLOCKED`, `TERMINATED`), temporizador `SysTick` y cambio de contexto en ensamblador mediante `PendSV`.
+* `sched/`: Planificador dual seleccionable en tiempo de ejecución (**Round Robin** y **Prioridades Expropiativas**).
+* `mem/`: Gestor de memoria dinámica propio sobre arreglo estático (`rtos_heap`) con algoritmo *First-Fit*, fusión de bloques libres y detección de *Stack Overflow* mediante valor canario (`0xDEADBEEF`).
+* `sync/`: Primitivas de sincronización sin espera activa (*busy-waiting*): semáforos contadores con cola FIFO, mutex con validación de propietario y colas de mensajes.
+* `drivers/`: Controladores a nivel de registros CMSIS para `USART1` (recepción por interrupción `RXNEIE` y transmisión protegida) y `GPIO`.
+* `shell/`: Interfaz de línea de comandos por puerto serie con soporte para `ps`, `kill`, `run`, `mem`, `uptime`, `sched`, `pc`, `led` y `clear`.
+
+## Requisitos de Software y Hardware
+1. **Hardware:**
+   * Placa STM32F103C8T6 (Blue Pill).
+   * Programador ST-Link V2 (conectado a pines `SWDIO`, `SWCLK`, `GND` y `3.3V`).
+   * Conversor USB-TTL (CP2102 / CH340 / FT232) para la consola serie.
+   * 3 LEDs externos con resistencias de 220 Ω o 330 Ω.
+2. **Software:**
+   * Visual Studio Code con la extensión **PlatformIO IDE** (o `platformio-core` CLI).
+
+## Conexión Física (Pinout)
+| Periférico / Función | Pin STM32F103 | Conexión Externa |
+| :--- | :--- | :--- |
+| **UART1 TX** | `PA9` | Pin `RX` del conversor USB-TTL |
+| **UART1 RX** | `PA10` | Pin `TX` del conversor USB-TTL |
+| **LED 1 (Sistema)** | `PC13` | LED azul integrado en la placa |
+| **LED 2 (Productor)** | `PA0` | Ánodo LED externo 1 -> Resistencia 330 Ω -> GND |
+| **LED 3 (Consumidor)** | `PA1` | Ánodo LED externo 2 -> Resistencia 330 Ω -> GND |
+| **LED 4 (Worker)** | `PA2` | Ánodo LED externo 3 -> Resistencia 330 Ω -> GND |
+
+## Instrucciones de Compilación y Carga
+
+### Opción A: Desde VS Code (PlatformIO IDE)
+1. Clonar este repositorio y abrir la carpeta raíz en Visual Studio Code.
+2. Esperar a que PlatformIO descargue automáticamente la cadena de herramientas `toolchain-gccarmnoneeabi` y `framework-cmsis-stm32f1`.
+3. Conectar el programador ST-Link V2 al puerto USB.
+4. Hacer clic en **PlatformIO: Build** (ícono de verificación `✓` en la barra inferior) para compilar el binario `.pio/build/genericSTM32F103C8/firmware.elf`.
+5. Hacer clic en **PlatformIO: Upload** (ícono de flecha `→`) para grabar el firmware en la memoria Flash del microcontrolador.
+6. Abrir **PlatformIO: Serial Monitor** (ícono de enchufe) configurado a **115200 baudios** y presionar el botón `RESET` de la placa.
+
+### Opción B: Desde Terminal (CLI)
+```bash
+# Compilar el proyecto
+pio run
+
+# Cargar el firmware en la STM32F103 mediante ST-Link
+pio run --target upload
+
+# Abrir monitor serie a 115200 bps
+pio device monitor -b 115200
